@@ -58,6 +58,8 @@ function createCube(scene: THREE.Scene) {
 
 // NOTE(Kevin): It's probably not super usefull, but I wanted to if I severely
 // impact performance or not.
+// NOTE(Kevin): Rendering the point cloud is already lagging on my computer,
+// but I'm wondering if it's due to a scuffed Linux setup
 function createDebuggingTools(scene: THREE.Scene) {
   scene.add(new THREE.AxesHelper(1))
   const stats = new Stats()
