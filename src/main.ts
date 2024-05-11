@@ -7,20 +7,16 @@ import Stats from "three/addons/libs/stats.module.js"
 
 function main() {
   const { canvas, renderer, camera, scene } = createWorld()
-  const cube = createCube(scene)
   const debugTools = createDebuggingTools(scene)
   const controls = createControls(renderer, camera)
   loadPointCloud(scene)
 
-  function render(time) {
-    time *= 0.001 // convert time to seconds
+  init(scene, camera)
 
-    cube.rotation.x = time
-    cube.rotation.y = time
-
+  function render() {
     renderer.render(scene, camera)
-
     debugTools.stats.update()
+
     requestAnimationFrame(render)
   }
 
@@ -40,7 +36,6 @@ function createWorld() {
     1, // near the plane
     1000 // far from the plane => so is this maximum drawing distance?
   )
-  camera.position.z = 2
 
   const scene = new THREE.Scene()
 
@@ -93,6 +88,11 @@ function loadPointCloud(scene: THREE.Scene) {
     p.material.size = 0.05
     scene.add(p)
   })
+}
+
+function init(scene: THREE.Scene, camera: THREE.Camera) {
+  camera.position.set(0, -10, 4) // NOTE(Kevin): seems like a decent starting point
+  camera.lookAt(scene.position)
 }
 
 main()
