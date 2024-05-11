@@ -1,0 +1,62 @@
+#+title: Segments.ai | Three.js Test
+
+* TL;DR
+** Can I see this live somewhere?
+You bet! [[https://segments-threejs-test.vercel.app/][Segments.ai | Coding Test]]
+
+** Can I run this myself?
+For sure! (assuming you have node installed)
+
+#+begin_src sh
+git clone https://github.com/venikx/segments-threejs-test
+cd segments-threejs-test
+npm install
+npm run dev
+#+end_src
+
+* My thoughts
+I've spent more time than the recommended allotted hours, without including some
+nice extras. The test itself was challenging as I haven't really used three.js
+before, and I'm only recently getting into graphics programming by learning
+WebGL and OpenGL.
+
+I was also not sure how to organize the code. At some point I started mixing
+global variables, with passed in variables as the global ones were a bit easier
+to work with when tracking state between different event handlers. In a
+production project, I'd have to clean it up further to get rid of these globals.
+
+The coolest concept I learned was using this raycaster, as I at first was
+rendering the cubes right in front of the camera and I didn't see this until I
+changed the camera angle. The raycaster was kind of a "wow" moment for me, when
+it correctly was able to draw the rectangle at the correct depth.
+
+* Possible Improvements
+Use an actual UI with widgets (just like photoshop) for drawing the cubes
+
+Add the ability to select an existing cube while in the "view" state, I think it's
+pretty unintuitive at the moment that a user can't select a cuboid while in
+the viewing mode.
+
+Currently the temporary cuboid also uses a raycaster to find an ending point,
+and I don't think this is strictly needed (it also means that the drawed cube
+doesn't update when there's no intersection with the point cloud), but I
+couldn't figure out how.
+
+The performance is not great at the moment, but I was expecting that because I'm
+working on a Linux machine on my MacBook and I don't think the graphics drivers
+works well + I expect to write all the possible performance horrors I can. My
+gut tells me the main performance hit is the raycaster, as I'm calculating them
+on every mouse movement.
+
+* Closing Remarks
+I learned a ton, and it got me excited again to continue learning WebGL. I got
+side-tracked a bit by learning some Golang.
+
+My biggest weak point with regards to three.js is going to be the math. I
+haven't had to use much of it in the past. And even less apply them practically
+with graphics programming, so it's definitely something I will need to work on.
+
+In some ways, it's also something I'm looking forward to, so I don't mind
+spending some extra hours studying the concepts more deeply outside the scope of
+the daily work. My strengths are certainly more geared to "classic CRUD style"
+application, but this excites me more, even though I will struggle a lot more.
