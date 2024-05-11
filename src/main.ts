@@ -151,7 +151,7 @@ function loadPointCloud(scene: THREE.Scene) {
 }
 
 function init(world: World, controls: Controls) {
-  world.camera.position.set(0, -10, 4) // NOTE(Kevin): seems like a decent starting point
+  world.camera.position.set(0, -20, 10) // NOTE(Kevin): seems like a decent starting point
   world.camera.lookAt(world.scene.position)
 
   window.addEventListener(
