@@ -1,6 +1,7 @@
 import "./style.css"
 import * as THREE from "three"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
+import { TransformControls } from "three/addons/controls/TransformControls.js"
 import { PCDLoader } from "three/addons/loaders/PCDLoader.js"
 
 import Stats from "three/addons/libs/stats.module.js"
@@ -20,15 +21,16 @@ const guiControls = {
 let isDragging = false
 let startPoint = new THREE.Vector3()
 let drawingCuboid: THREE.Mesh | null = null
+const cuboids: THREE.Mesh[] = []
 
 function main() {
   const world = createWorld()
   const { renderer, camera, scene } = world
   const debugTools = createDebuggingTools(scene)
-  createControls(renderer, camera)
+  const controls = createControls(renderer, camera, scene)
   loadPointCloud(scene)
 
-  init(world)
+  init(world, controls)
 
   function render() {
     renderer.render(scene, camera)
@@ -90,14 +92,30 @@ function createDebuggingTools(scene: THREE.Scene) {
   }
 }
 
+type Controls = {
+  orbitControls: OrbitControls
+  transformControls: TransformControls
+}
 function createControls(
   renderer: THREE.Renderer,
-  camera: THREE.PerspectiveCamera
-) {
+  camera: THREE.PerspectiveCamera,
+  scene: THREE.Scene
+): Controls {
   const orbitControls = new OrbitControls(camera, renderer.domElement)
   orbitControls.minDistance = 0.01
   orbitControls.maxDistance = 1000
   orbitControls.update()
+
+  const transformControls = new TransformControls(camera, renderer.domElement)
+  window.addEventListener("keydown", function (event) {
+    if (event.key === "t") transformControls.setMode("translate")
+    if (event.key === "r") transformControls.setMode("rotate")
+    if (event.key === "s") transformControls.setMode("scale")
+    if (event.key === "Escape") transformControls.detach()
+
+    console.log("Transform Mode: ", transformControls.mode)
+  })
+  scene.add(transformControls)
 
   // NOTE(Kevin): Feels a bit hacky to use this, but I the idea is to have some
   // different modes: view, drawing, selection. Imagine selection icons etc from
@@ -105,13 +123,18 @@ function createControls(
   const states = ["view", "create", "transform"] as const
   const gui = new GUI()
   gui.add(guiControls, "state", states).onChange((s) => {
+    console.log("Current State", String(s))
     orbitControls.enabled = s === "view"
     orbitControls.update()
+    console.log("Orbit Controls", String(orbitControls.enabled))
+
+    if (s !== "transform") transformControls.detach()
   })
   gui.open()
 
   return {
     orbitControls,
+    transformControls,
     guiControls,
   }
 }
@@ -127,7 +150,7 @@ function loadPointCloud(scene: THREE.Scene) {
   })
 }
 
-function init(world: World) {
+function init(world: World, controls: Controls) {
   world.camera.position.set(0, -10, 4) // NOTE(Kevin): seems like a decent starting point
   world.camera.lookAt(world.scene.position)
 
@@ -138,7 +161,7 @@ function init(world: World) {
 
   world.renderer.domElement.addEventListener(
     "pointerdown",
-    onPointerDown(world)
+    onPointerDown(world, controls)
   )
 
   world.renderer.domElement.addEventListener(
@@ -161,16 +184,15 @@ function onWindowResize(
   camera.updateProjectionMatrix()
 }
 
-function onPointerDown(world: World) {
+function onPointerDown(world: World, controls: Controls) {
   return (event: PointerEvent) => {
+    const mouse = new THREE.Vector2(
+      (event.clientX / window.innerWidth) * 2 - 1,
+      -(event.clientY / window.innerHeight) * 2 + 1
+    )
+
     if (guiControls.state === "create") {
       isDragging = true
-
-      const mouse = new THREE.Vector2(
-        (event.clientX / window.innerWidth) * 2 - 1,
-        -(event.clientY / window.innerHeight) * 2 + 1
-      )
-
       const points = world.scene.getObjectByName("point-cloud")
 
       world.raycaster.setFromCamera(mouse, world.camera)
@@ -185,6 +207,15 @@ function onPointerDown(world: World) {
           drawingCuboid.position.copy(startPoint)
           world.scene.add(drawingCuboid)
         }
+      }
+    }
+    if (guiControls.state === "transform") {
+      world.raycaster.setFromCamera(mouse, world.camera)
+      const intersects = world.raycaster.intersectObjects(cuboids)
+
+      if (intersects.length > 0) {
+        const object = intersects[0].object
+        controls.transformControls.attach(object)
       }
     }
   }
@@ -220,6 +251,7 @@ function onPointerUp(world: World) {
   isDragging = false
 
   if (drawingCuboid) {
+    cuboids.push(drawingCuboid)
     drawingCuboid = null
   }
 }
