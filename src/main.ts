@@ -1,6 +1,7 @@
 import "./style.css"
 import * as THREE from "three"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
+import { PCDLoader } from "three/addons/loaders/PCDLoader.js"
 
 import Stats from "three/addons/libs/stats.module.js"
 
@@ -9,6 +10,7 @@ function main() {
   const cube = createCube(scene)
   const debugTools = createDebuggingTools(scene)
   const controls = createControls(renderer, camera)
+  loadPointCloud(scene)
 
   function render(time) {
     time *= 0.001 // convert time to seconds
@@ -80,6 +82,17 @@ function createControls(renderer: THREE.Renderer, camera: THREE.Camera) {
   return {
     orbitControls,
   }
+}
+
+function loadPointCloud(scene: THREE.Scene) {
+  const loader = new PCDLoader()
+
+  // NOTE(Kevin): I added the file locally, to not deal with network requests
+  loader.load("./41089c53-efca-4634-a92a-0c4143092374.pcd", (p) => {
+    p.name = "point-cloud"
+    p.material.size = 0.05
+    scene.add(p)
+  })
 }
 
 main()
