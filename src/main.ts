@@ -73,7 +73,10 @@ function createWorld(): World {
 
 function createCuboid() {
   const geometry = new THREE.BoxGeometry(1, 1, 1)
-  const material = new THREE.MeshBasicMaterial({ color: 0x44aa88 })
+  const material = new THREE.MeshBasicMaterial({
+    color: THREE.Color.NAMES.orange,
+    opacity: 0.5,
+  })
 
   return new THREE.Mesh(geometry, material)
 }
