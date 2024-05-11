@@ -4,6 +4,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js"
 import { PCDLoader } from "three/addons/loaders/PCDLoader.js"
 
 import Stats from "three/addons/libs/stats.module.js"
+import { GUI } from "three/addons/libs/lil-gui.module.min.js"
 
 type World = {
   canvas: HTMLCanvasElement
@@ -12,6 +13,10 @@ type World = {
   scene: THREE.Scene
   raycaster: THREE.Raycaster
   pointer: THREE.Vector2
+}
+
+const guiControls = {
+  state: "view",
 }
 
 function main() {
@@ -24,9 +29,12 @@ function main() {
   init(world)
 
   function render() {
+    controls.orbitControls.enabled = guiControls.state !== "create"
+    controls.orbitControls.update()
+
     const points = scene.getObjectByName("point-cloud")
 
-    if (points) {
+    if (points && !controls.orbitControls.enabled) {
       const cube = scene.getObjectByName("raycast-test")
       raycaster.setFromCamera(pointer, camera)
 
@@ -107,8 +115,17 @@ function createControls(renderer: THREE.Renderer, camera: THREE.Camera) {
   orbitControls.maxDistance = 1000
   orbitControls.update()
 
+  // NOTE(Kevin): Feels a bit hacky to use this, but I the idea is to have some
+  // different modes: view, drawing, selection. Imagine selection icons etc from
+  // photoshop. Lost too much time on the raycast at the moment
+  const states = ["view", "create", "transform"] as const
+  const gui = new GUI()
+  gui.add(guiControls, "state", states)
+  gui.open()
+
   return {
     orbitControls,
+    guiControls,
   }
 }
 
@@ -149,7 +166,7 @@ function onWindowResize(camera: THREE.Camera, renderer: THREE.Renderer) {
 }
 
 function onPointerDown(world: World) {
-  return (event) => {
+  return (event: PointerEvent) => {
     world.pointer.x = (event.clientX / window.innerWidth) * 2 - 1
     world.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1
   }
