@@ -178,6 +178,7 @@ function onWindowResize(
   camera: THREE.PerspectiveCamera,
   renderer: THREE.Renderer
 ) {
+  camera.aspect = window.innerWidth / window.innerHeight
   // NOTE(Kevin): Seems to be required, otherwise the images looks flat when
   // resizing to a bigger screen
   renderer.setSize(window.innerWidth, window.innerHeight)
