@@ -5,25 +5,47 @@ import { PCDLoader } from "three/addons/loaders/PCDLoader.js"
 
 import Stats from "three/addons/libs/stats.module.js"
 
+type World = {
+  canvas: HTMLCanvasElement
+  renderer: THREE.Renderer
+  camera: THREE.Camera
+  scene: THREE.Scene
+  raycaster: THREE.Raycaster
+  pointer: THREE.Vector2
+}
+
 function main() {
-  const { canvas, renderer, camera, scene } = createWorld()
+  const world = createWorld()
+  const { canvas, renderer, camera, scene, raycaster, pointer } = world
   const debugTools = createDebuggingTools(scene)
   const controls = createControls(renderer, camera)
   loadPointCloud(scene)
 
-  init(scene, camera, renderer)
+  init(world)
 
   function render() {
+    const points = scene.getObjectByName("point-cloud")
+
+    if (points) {
+      const cube = scene.getObjectByName("raycast-test")
+      raycaster.setFromCamera(pointer, camera)
+
+      const intersects = raycaster.intersectObject(points)
+
+      if (intersects.length > 0) {
+        cube.position.copy(intersects[0].point)
+        cube.scale.set(1, 1, 1)
+      }
+    }
     renderer.render(scene, camera)
     debugTools.stats.update()
-
     requestAnimationFrame(render)
   }
 
   requestAnimationFrame(render)
 }
 
-function createWorld() {
+function createWorld(): World {
   const canvas: HTMLCanvasElement = document.querySelector("#c")
   if (!canvas) throw new Error("No canvas element to hook into.")
 
@@ -39,11 +61,20 @@ function createWorld() {
 
   const scene = new THREE.Scene()
 
+  // NOTE(Kevin): I don't fully understand raycasting, but I assume I need it in
+  // order to get the point in 3D space from the perspective of the camera
+  const raycaster = new THREE.Raycaster()
+  raycaster.params.Points.threshold = 0.1
+
+  const pointer = new THREE.Vector2()
+
   return {
     canvas,
     renderer,
     camera,
     scene,
+    raycaster,
+    pointer,
   }
 }
 
@@ -92,15 +123,21 @@ function loadPointCloud(scene: THREE.Scene) {
   })
 }
 
-function init(
-  scene: THREE.Scene,
-  camera: THREE.Camera,
-  renderer: THREE.Renderer
-) {
-  camera.position.set(0, -10, 4) // NOTE(Kevin): seems like a decent starting point
-  camera.lookAt(scene.position)
+function init(world: World) {
+  world.camera.position.set(0, -10, 4) // NOTE(Kevin): seems like a decent starting point
+  world.camera.lookAt(world.scene.position)
 
-  window.addEventListener("resize", onWindowResize.bind(null, camera, renderer))
+  const cube = createCube(world.scene)
+  cube.name = "raycast-test"
+
+  window.addEventListener(
+    "resize",
+    onWindowResize.bind(null, world.camera, world.renderer)
+  )
+  world.renderer.domElement.addEventListener(
+    "pointerdown",
+    onPointerDown(world)
+  )
 }
 
 function onWindowResize(camera: THREE.Camera, renderer: THREE.Renderer) {
@@ -109,6 +146,13 @@ function onWindowResize(camera: THREE.Camera, renderer: THREE.Renderer) {
   // resizing to a bigger screen
   camera.updateProjectionMatrix()
   renderer.setSize(window.innerWidth, window.innerHeight)
+}
+
+function onPointerDown(world: World) {
+  return (event) => {
+    world.pointer.x = (event.clientX / window.innerWidth) * 2 - 1
+    world.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1
+  }
 }
 
 main()
