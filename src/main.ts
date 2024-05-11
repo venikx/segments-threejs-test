@@ -1,9 +1,11 @@
 import "./style.css"
 import * as THREE from "three"
+import Stats from "three/addons/libs/stats.module.js"
 
 function main() {
   const { canvas, renderer, camera, scene } = createWorld()
   const cube = createCube(scene)
+  const debugTools = createDebuggingTools(scene)
 
   function render(time) {
     time *= 0.001 // convert time to seconds
@@ -12,6 +14,8 @@ function main() {
     cube.rotation.y = time
 
     renderer.render(scene, camera)
+
+    debugTools.stats.update()
     requestAnimationFrame(render)
   }
 
@@ -19,7 +23,7 @@ function main() {
 }
 
 function createWorld() {
-  const canvas = document.querySelector("#c")
+  const canvas: HTMLCanvasElement = document.querySelector("#c")
   if (!canvas) throw new Error("No canvas element to hook into.")
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, canvas })
@@ -50,6 +54,18 @@ function createCube(scene: THREE.Scene) {
   scene.add(cube)
 
   return cube
+}
+
+// NOTE(Kevin): It's probably not super usefull, but I wanted to if I severely
+// impact performance or not.
+function createDebuggingTools(scene: THREE.Scene) {
+  scene.add(new THREE.AxesHelper(1))
+  const stats = new Stats()
+  document.body.appendChild(stats.dom)
+
+  return {
+    stats,
+  }
 }
 
 main()
