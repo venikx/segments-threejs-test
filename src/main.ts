@@ -138,7 +138,6 @@ function createControls(
   return {
     orbitControls,
     transformControls,
-    guiControls,
   }
 }
 
@@ -171,10 +170,7 @@ function init(world: World, controls: Controls) {
     "pointermove",
     onPointerMove(world)
   )
-  world.renderer.domElement.addEventListener(
-    "pointerup",
-    onPointerUp.bind(null, world)
-  )
+  world.renderer.domElement.addEventListener("pointerup", onPointerUp)
 }
 
 function onWindowResize(
@@ -198,12 +194,13 @@ function onPointerDown(world: World, controls: Controls) {
     if (guiControls.state === "create") {
       isDragging = true
       const points = world.scene.getObjectByName("point-cloud")
+      if (!points) return
 
       world.raycaster.setFromCamera(mouse, world.camera)
       const intersects = world.raycaster.intersectObject(points)
 
       if (intersects.length > 0) {
-        startPoint.copy(intersects[0].point)
+        startPoint.copy(intersects[0]!.point)
 
         // NOTE(Kevin): Draw a temporary cuboid, and modify it's size in onPointerMove
         if (!drawingCuboid) {
@@ -218,7 +215,7 @@ function onPointerDown(world: World, controls: Controls) {
       const intersects = world.raycaster.intersectObjects(cuboids)
 
       if (intersects.length > 0) {
-        const object = intersects[0].object
+        const object = intersects[0]!.object
         controls.transformControls.attach(object)
       }
     }
@@ -229,6 +226,7 @@ function onPointerMove(world: World) {
   return (event: PointerEvent) => {
     if (!isDragging || !drawingCuboid) return
     const points = world.scene.getObjectByName("point-cloud")
+    if (!points) return
 
     // NOTE(Kevin): I wonder if I actually need a raycaster here, for now it's just
     // a copy past from above (perf is low)
@@ -240,7 +238,7 @@ function onPointerMove(world: World) {
     const intersects = world.raycaster.intersectObject(points)
 
     if (intersects.length > 0) {
-      const endPoint = intersects[0].point
+      const endPoint = intersects[0]!.point
       const sizeVector = new THREE.Vector3().subVectors(endPoint, startPoint)
       drawingCuboid.scale.set(sizeVector.x, sizeVector.y, sizeVector.z)
       drawingCuboid.position.addVectors(
@@ -251,7 +249,7 @@ function onPointerMove(world: World) {
   }
 }
 
-function onPointerUp(world: World) {
+function onPointerUp() {
   isDragging = false
 
   if (drawingCuboid) {
