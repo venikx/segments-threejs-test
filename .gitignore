@@ -1,3 +1,7 @@
+# Nix & Nix Flakes
+result
+.envrc
+
 # Logs
 logs
 *.log
