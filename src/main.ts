@@ -9,42 +9,28 @@ import { GUI } from "three/addons/libs/lil-gui.module.min.js"
 type World = {
   canvas: HTMLCanvasElement
   renderer: THREE.Renderer
-  camera: THREE.Camera
+  camera: THREE.PerspectiveCamera
   scene: THREE.Scene
   raycaster: THREE.Raycaster
-  pointer: THREE.Vector2
 }
 
 const guiControls = {
   state: "view",
 }
+let isDragging = false
+let startPoint = new THREE.Vector3()
+let drawingCuboid: THREE.Mesh | null = null
 
 function main() {
   const world = createWorld()
-  const { canvas, renderer, camera, scene, raycaster, pointer } = world
+  const { renderer, camera, scene } = world
   const debugTools = createDebuggingTools(scene)
-  const controls = createControls(renderer, camera)
+  createControls(renderer, camera)
   loadPointCloud(scene)
 
   init(world)
 
   function render() {
-    controls.orbitControls.enabled = guiControls.state !== "create"
-    controls.orbitControls.update()
-
-    const points = scene.getObjectByName("point-cloud")
-
-    if (points && !controls.orbitControls.enabled) {
-      const cube = scene.getObjectByName("raycast-test")
-      raycaster.setFromCamera(pointer, camera)
-
-      const intersects = raycaster.intersectObject(points)
-
-      if (intersects.length > 0) {
-        cube.position.copy(intersects[0].point)
-        cube.scale.set(1, 1, 1)
-      }
-    }
     renderer.render(scene, camera)
     debugTools.stats.update()
     requestAnimationFrame(render)
@@ -54,7 +40,7 @@ function main() {
 }
 
 function createWorld(): World {
-  const canvas: HTMLCanvasElement = document.querySelector("#c")
+  const canvas = document.querySelector<HTMLCanvasElement>("#c")
   if (!canvas) throw new Error("No canvas element to hook into.")
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, canvas })
@@ -74,25 +60,20 @@ function createWorld(): World {
   const raycaster = new THREE.Raycaster()
   raycaster.params.Points.threshold = 0.1
 
-  const pointer = new THREE.Vector2()
-
   return {
     canvas,
     renderer,
     camera,
     scene,
     raycaster,
-    pointer,
   }
 }
 
-function createCube(scene: THREE.Scene) {
+function createCuboid() {
   const geometry = new THREE.BoxGeometry(1, 1, 1)
   const material = new THREE.MeshBasicMaterial({ color: 0x44aa88 })
-  const cube = new THREE.Mesh(geometry, material)
-  scene.add(cube)
 
-  return cube
+  return new THREE.Mesh(geometry, material)
 }
 
 // NOTE(Kevin): It's probably not super usefull, but I wanted to if I severely
@@ -109,7 +90,10 @@ function createDebuggingTools(scene: THREE.Scene) {
   }
 }
 
-function createControls(renderer: THREE.Renderer, camera: THREE.Camera) {
+function createControls(
+  renderer: THREE.Renderer,
+  camera: THREE.PerspectiveCamera
+) {
   const orbitControls = new OrbitControls(camera, renderer.domElement)
   orbitControls.minDistance = 0.01
   orbitControls.maxDistance = 1000
@@ -120,7 +104,10 @@ function createControls(renderer: THREE.Renderer, camera: THREE.Camera) {
   // photoshop. Lost too much time on the raycast at the moment
   const states = ["view", "create", "transform"] as const
   const gui = new GUI()
-  gui.add(guiControls, "state", states)
+  gui.add(guiControls, "state", states).onChange((s) => {
+    orbitControls.enabled = s === "view"
+    orbitControls.update()
+  })
   gui.open()
 
   return {
@@ -144,31 +131,96 @@ function init(world: World) {
   world.camera.position.set(0, -10, 4) // NOTE(Kevin): seems like a decent starting point
   world.camera.lookAt(world.scene.position)
 
-  const cube = createCube(world.scene)
-  cube.name = "raycast-test"
-
   window.addEventListener(
     "resize",
     onWindowResize.bind(null, world.camera, world.renderer)
   )
+
   world.renderer.domElement.addEventListener(
     "pointerdown",
     onPointerDown(world)
   )
+
+  world.renderer.domElement.addEventListener(
+    "pointermove",
+    onPointerMove(world)
+  )
+  world.renderer.domElement.addEventListener(
+    "pointerup",
+    onPointerUp.bind(null, world)
+  )
 }
 
-function onWindowResize(camera: THREE.Camera, renderer: THREE.Renderer) {
-  camera.aspect = window.innerWidth / window.innerHeight
+function onWindowResize(
+  camera: THREE.PerspectiveCamera,
+  renderer: THREE.Renderer
+) {
   // NOTE(Kevin): Seems to be required, otherwise the images looks flat when
   // resizing to a bigger screen
-  camera.updateProjectionMatrix()
   renderer.setSize(window.innerWidth, window.innerHeight)
+  camera.updateProjectionMatrix()
 }
 
 function onPointerDown(world: World) {
   return (event: PointerEvent) => {
-    world.pointer.x = (event.clientX / window.innerWidth) * 2 - 1
-    world.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1
+    if (guiControls.state === "create") {
+      isDragging = true
+
+      const mouse = new THREE.Vector2(
+        (event.clientX / window.innerWidth) * 2 - 1,
+        -(event.clientY / window.innerHeight) * 2 + 1
+      )
+
+      const points = world.scene.getObjectByName("point-cloud")
+
+      world.raycaster.setFromCamera(mouse, world.camera)
+      const intersects = world.raycaster.intersectObject(points)
+
+      if (intersects.length > 0) {
+        startPoint.copy(intersects[0].point)
+
+        // NOTE(Kevin): Draw a temporary cuboid, and modify it's size in onPointerMove
+        if (!drawingCuboid) {
+          drawingCuboid = createCuboid()
+          drawingCuboid.position.copy(startPoint)
+          world.scene.add(drawingCuboid)
+        }
+      }
+    }
+  }
+}
+
+function onPointerMove(world: World) {
+  return (event: PointerEvent) => {
+    if (!isDragging || !drawingCuboid) return
+    const points = world.scene.getObjectByName("point-cloud")
+
+    // NOTE(Kevin): I wonder if I actually need a raycaster here, for now it's just
+    // a copy past from above (perf is low)
+    const mouse = new THREE.Vector2(
+      (event.clientX / window.innerWidth) * 2 - 1,
+      -(event.clientY / window.innerHeight) * 2 + 1
+    )
+    world.raycaster.setFromCamera(mouse, world.camera)
+    const intersects = world.raycaster.intersectObject(points)
+
+    if (intersects.length > 0) {
+      const endPoint = intersects[0].point
+      const sizeVector = new THREE.Vector3().subVectors(endPoint, startPoint)
+      drawingCuboid.scale.set(sizeVector.x, sizeVector.y, sizeVector.z)
+      drawingCuboid.position.addVectors(
+        startPoint,
+        sizeVector.multiplyScalar(0.5)
+      )
+    }
+  }
+}
+
+function onPointerUp(world: World) {
+  isDragging = false
+
+  if (drawingCuboid) {
+    drawingCuboid = null
   }
 }
 
