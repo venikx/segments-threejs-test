@@ -1,11 +1,14 @@
 import "./style.css"
 import * as THREE from "three"
+import { OrbitControls } from "three/addons/controls/OrbitControls.js"
+
 import Stats from "three/addons/libs/stats.module.js"
 
 function main() {
   const { canvas, renderer, camera, scene } = createWorld()
   const cube = createCube(scene)
   const debugTools = createDebuggingTools(scene)
+  const controls = createControls(renderer, camera)
 
   function render(time) {
     time *= 0.001 // convert time to seconds
@@ -65,6 +68,17 @@ function createDebuggingTools(scene: THREE.Scene) {
 
   return {
     stats,
+  }
+}
+
+function createControls(renderer: THREE.Renderer, camera: THREE.Camera) {
+  const orbitControls = new OrbitControls(camera, renderer.domElement)
+  orbitControls.minDistance = 0.01
+  orbitControls.maxDistance = 1000
+  orbitControls.update()
+
+  return {
+    orbitControls,
   }
 }
 
