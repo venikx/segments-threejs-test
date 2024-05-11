@@ -11,7 +11,7 @@ function main() {
   const controls = createControls(renderer, camera)
   loadPointCloud(scene)
 
-  init(scene, camera)
+  init(scene, camera, renderer)
 
   function render() {
     renderer.render(scene, camera)
@@ -92,9 +92,23 @@ function loadPointCloud(scene: THREE.Scene) {
   })
 }
 
-function init(scene: THREE.Scene, camera: THREE.Camera) {
+function init(
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  renderer: THREE.Renderer
+) {
   camera.position.set(0, -10, 4) // NOTE(Kevin): seems like a decent starting point
   camera.lookAt(scene.position)
+
+  window.addEventListener("resize", onWindowResize.bind(null, camera, renderer))
+}
+
+function onWindowResize(camera: THREE.Camera, renderer: THREE.Renderer) {
+  camera.aspect = window.innerWidth / window.innerHeight
+  // NOTE(Kevin): Seems to be required, otherwise the images looks flat when
+  // resizing to a bigger screen
+  camera.updateProjectionMatrix()
+  renderer.setSize(window.innerWidth, window.innerHeight)
 }
 
 main()
